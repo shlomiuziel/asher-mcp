@@ -21,7 +21,7 @@ export async function ensureConfigFileExists(configPath: string): Promise<Claude
       config.mcpServers = {};
     }
     return config;
-  } catch (e) {
+  } catch (_e) {
     // If file doesn't exist or is invalid, create a new config
     return { mcpServers: {} };
   }
@@ -29,7 +29,7 @@ export async function ensureConfigFileExists(configPath: string): Promise<Claude
 
 function getConfigPath(): { configDir: string; configPath: string } {
   const isWindows = process.platform === 'win32';
-  
+
   if (isWindows) {
     const appData = process.env.APPDATA || join(homedir(), 'AppData', 'Roaming');
     const configDir = join(appData, 'Claude');
@@ -42,54 +42,63 @@ function getConfigPath(): { configDir: string; configPath: string } {
   }
 }
 
-export async function configureClaudeIntegration(projectPath: string): Promise<{ success: boolean; message: string }> {
+export async function configureClaudeIntegration(
+  projectPath: string
+): Promise<{ success: boolean; message: string }> {
   const { configDir, configPath } = getConfigPath();
   console.log(`Configuring Claude desktop integration at: ${configPath}`);
-  
+
   try {
     // Ensure the config directory exists
     const { mkdir } = await import('fs/promises');
     await mkdir(configDir, { recursive: true });
-    
+
     // Ensure the config file exists and is valid
     const config = await ensureConfigFileExists(configPath);
-    
+
     // Add or update the server configuration
     const serverName = 'asher-financial-aggregator';
     config.mcpServers = config.mcpServers || {};
-    
+
     // Always update to ensure we have the latest configuration
     const tsxPath = which.sync('tsx', {
-      path: process.env.PATH?.split(':').filter(p => !p.includes('node_modules/.bin')).join(':')
+      path: process.env.PATH?.split(':')
+        .filter(p => !p.includes('node_modules/.bin'))
+        .join(':'),
     });
     const mcpServerPath = join(projectPath, 'src', 'mcp', 'Server.ts');
-    
+
     console.log('Global tsx path:', tsxPath);
-    
+
     config.mcpServers[serverName] = {
       command: tsxPath,
-      args: [mcpServerPath]
+      args: [mcpServerPath],
     };
-    
+
     await writeFile(configPath, JSON.stringify(config, null, 2));
     return {
       success: true,
-      message: '✅ Updated Claude desktop config with asher-financial-aggregator integration.\n  You can now use Asher as a tool in Claude desktop.'
+      message:
+        '✅ Updated Claude desktop config with asher-financial-aggregator integration.\n  You can now use Asher as a tool in Claude desktop.',
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    const manualConfig = JSON.stringify({
-      mcpServers: {
-        'asher-financial-aggregator': {
-          command: 'tsx',
-          args: [projectPath + '/src/mcp/Server.ts']
-        }
-      }
-    }, null, 2);
-    
+    const manualConfig = JSON.stringify(
+      {
+        mcpServers: {
+          'asher-financial-aggregator': {
+            command: 'tsx',
+            args: [projectPath + '/src/mcp/Server.ts'],
+          },
+        },
+      },
+      null,
+      2
+    );
+
     return {
       success: false,
-      message: `⚠️ Could not configure Claude desktop integration:\n${errorMessage}\n\nYou can manually configure Claude desktop by adding the following to your ~/.config/claude/claude_desktop_config.json:\n${manualConfig}`
+      message: `⚠️ Could not configure Claude desktop integration:\n${errorMessage}\n\nYou can manually configure Claude desktop by adding the following to your ~/.config/claude/claude_desktop_config.json:\n${manualConfig}`,
     };
   }
 }

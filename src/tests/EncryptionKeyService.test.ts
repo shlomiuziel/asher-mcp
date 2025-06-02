@@ -13,10 +13,10 @@ vi.mock('node-notifier', () => ({
       }
       // Simulate successful notification display
       return {
-        on: vi.fn()
+        on: vi.fn(),
       };
-    })
-  }
+    }),
+  },
 }));
 
 vi.mock('readline', () => {
@@ -28,8 +28,8 @@ vi.mock('readline', () => {
       }),
       close: vi.fn(),
       on: vi.fn(),
-      removeListener: vi.fn()
-    })
+      removeListener: vi.fn(),
+    }),
   };
 });
 
@@ -38,15 +38,15 @@ vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
 describe('EncryptionKeyService', () => {
   let service: EncryptionKeyService;
-  
+
   beforeEach(() => {
     // Reset the singleton instance before each test
     (EncryptionKeyService as any).instance = null;
     service = EncryptionKeyService.getInstance();
-    
+
     vi.clearAllMocks();
   });
-  
+
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -60,7 +60,9 @@ describe('EncryptionKeyService', () => {
 
     it('should throw an error for empty key', () => {
       expect(() => service.setKey('')).toThrow('Encryption key must be at least 6 characters long');
-      expect(() => service.setKey('   ')).toThrow('Encryption key must be at least 6 characters long');
+      expect(() => service.setKey('   ')).toThrow(
+        'Encryption key must be at least 6 characters long'
+      );
     });
   });
 
@@ -75,28 +77,28 @@ describe('EncryptionKeyService', () => {
       // Reset the service to ensure no key is set
       (EncryptionKeyService as any).instance = null;
       const newService = EncryptionKeyService.getInstance();
-      
+
       const promptSpy = vi.spyOn(newService as any, 'promptForEncryptionKey');
-      
+
       // Make multiple concurrent calls
       const promises = [
         newService.ensureKeyIsAvailable(),
         newService.ensureKeyIsAvailable(),
-        newService.ensureKeyIsAvailable()
+        newService.ensureKeyIsAvailable(),
       ];
-      
+
       // Simulate the notification response after a short delay
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Simulate user responding to the notification
       if (notificationCallback) {
         notificationCallback(null, 'replied', { response: 'test-key' });
       }
-      
+
       await Promise.all(promises);
-      
+
       expect(newService.getKey()).toBe('test-key');
-      
+
       // Verify that promptForEncryptionKey was only called once despite multiple concurrent calls
       expect(promptSpy).toHaveBeenCalledTimes(1);
     }, 10000); // Increase timeout for this test

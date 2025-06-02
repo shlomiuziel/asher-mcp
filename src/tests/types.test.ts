@@ -90,9 +90,9 @@ describe('TypeScript Types and Zod Schemas', () => {
       const result = scraperConfigSchema.safeParse(invalidConfig);
       expect(result.success).toBe(false);
       if (!result.success) {
-        expect(result.error.issues.some(issue => 
-          issue.message === 'Card number must be 6 digits'
-        )).toBe(true);
+        expect(
+          result.error.issues.some(issue => issue.message === 'Card number must be 6 digits')
+        ).toBe(true);
       }
     });
   });

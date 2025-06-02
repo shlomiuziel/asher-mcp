@@ -3,17 +3,6 @@ import { validateSelectQuery } from '../utils/sqlValidation.js';
 import { DatabaseService } from '../services/DatabaseService.js';
 
 describe('SQL Validation', () => {
-  let mockDb: any;
-
-  beforeEach(() => {
-    // Create a mock database with a simple query method
-    mockDb = {
-      prepare: vi.fn().mockImplementation(() => ({
-        all: vi.fn().mockReturnValue([{ id: 1, amount: 100 }])
-      }))
-    };
-  });
-
   describe('validateSelectQuery', () => {
     it('should validate a simple SELECT query', () => {
       const result = validateSelectQuery('SELECT * FROM transactions');
@@ -25,7 +14,7 @@ describe('SQL Validation', () => {
       const result = validateSelectQuery(123);
       expect(result).toEqual({
         valid: false,
-        reason: 'Query must be a string'
+        reason: 'Query must be a string',
       });
     });
 
@@ -33,25 +22,31 @@ describe('SQL Validation', () => {
       const result = validateSelectQuery('   ');
       expect(result).toEqual({
         valid: false,
-        reason: 'Empty query'
+        reason: 'Empty query',
       });
     });
 
     it('should reject multiple statements', () => {
-      const result = validateSelectQuery('SELECT * FROM transactions; SELECT * FROM scraper_credentials');
+      const result = validateSelectQuery(
+        'SELECT * FROM transactions; SELECT * FROM scraper_credentials'
+      );
       expect(result).toEqual({
         valid: false,
-        reason: 'Multiple statements are not allowed'
+        reason: 'Multiple statements are not allowed',
       });
     });
 
     it('should allow semicolons in string literals', () => {
-      const result = validateSelectQuery(`SELECT * FROM transactions WHERE note = 'This is a note with ; semicolon'`);
+      const result = validateSelectQuery(
+        `SELECT * FROM transactions WHERE note = 'This is a note with ; semicolon'`
+      );
       expect(result).toEqual({ valid: true });
     });
 
     it('should allow semicolons in double-quoted strings', () => {
-      const result = validateSelectQuery(`SELECT * FROM transactions WHERE note = "This is a note with ; semicolon"`);
+      const result = validateSelectQuery(
+        `SELECT * FROM transactions WHERE note = "This is a note with ; semicolon"`
+      );
       expect(result).toEqual({ valid: true });
     });
 
@@ -70,7 +65,7 @@ describe('SQL Validation', () => {
         const result = validateSelectQuery('PRAGMA table_info(users)');
         expect(result).toEqual({
           valid: false,
-          reason: 'Access to table not allowed in PRAGMA: users'
+          reason: 'Access to table not allowed in PRAGMA: users',
         });
       });
 
@@ -86,20 +81,26 @@ describe('SQL Validation', () => {
     });
 
     it('should handle escaped quotes in strings', () => {
-      const result = validateSelectQuery(`SELECT * FROM transactions WHERE note = 'This is a note with \'; semicolon'`);
+      const result = validateSelectQuery(
+        `SELECT * FROM transactions WHERE note = 'This is a note with \'; semicolon'`
+      );
       expect(result).toEqual({ valid: false, reason: 'Multiple statements are not allowed' });
     });
 
     it('should handle escaped slash in strings', () => {
-      const result = validateSelectQuery(`SELECT * FROM transactions WHERE note = 'This is a note with \\\'; semicolon'`);
+      const result = validateSelectQuery(
+        `SELECT * FROM transactions WHERE note = 'This is a note with \\\'; semicolon'`
+      );
       expect(result).toEqual({ valid: true });
     });
 
     it('should detect unquoted semicolons after strings', () => {
-      const result = validateSelectQuery(`SELECT * FROM transactions WHERE note = 'test'; DROP TABLE transactions`);
+      const result = validateSelectQuery(
+        `SELECT * FROM transactions WHERE note = 'test'; DROP TABLE transactions`
+      );
       expect(result).toEqual({
         valid: false,
-        reason: 'Multiple statements are not allowed'
+        reason: 'Multiple statements are not allowed',
       });
     });
 
@@ -112,7 +113,7 @@ describe('SQL Validation', () => {
       const result = validateSelectQuery(query);
       expect(result).toEqual({
         valid: false,
-        reason: 'Multiple statements are not allowed'
+        reason: 'Multiple statements are not allowed',
       });
     });
 
@@ -120,7 +121,7 @@ describe('SQL Validation', () => {
       const result = validateSelectQuery('DELETE FROM transactions');
       expect(result).toEqual({
         valid: false,
-        reason: 'Only SELECT statements are allowed'
+        reason: 'Only SELECT statements are allowed',
       });
     });
 
@@ -128,7 +129,7 @@ describe('SQL Validation', () => {
       const result = validateSelectQuery('SELECT * FROM users');
       expect(result).toEqual({
         valid: false,
-        reason: 'Access to table(s) not allowed: users'
+        reason: 'Access to table(s) not allowed: users',
       });
     });
 
@@ -145,51 +146,51 @@ describe('SQL Validation', () => {
     beforeEach(() => {
       // Create a real DatabaseService instance with a mock database
       dbService = DatabaseService.getInstance(':memory:');
-      
+
       // Mock the internal database methods
       const mockDb = {
         prepare: vi.fn().mockImplementation(() => ({
-          all: vi.fn().mockReturnValue([{ id: 1, amount: 100 }])
-        }))
+          all: vi.fn().mockReturnValue([{ id: 1, amount: 100 }]),
+        })),
       };
-      
-      // @ts-ignore - Allow setting private property for testing
+
+      // Set private property for testing
       (dbService as any).db = mockDb;
     });
 
     it('should execute a valid SELECT query', async () => {
       const result = await dbService.executeSafeSelectQuery('SELECT * FROM transactions');
-      
+
       expect(result).toEqual({
         success: true,
-        data: [{ id: 1, amount: 100 }]
+        data: [{ id: 1, amount: 100 }],
       });
     });
 
     it('should reject invalid queries', async () => {
       const result = await dbService.executeSafeSelectQuery('SELECT * FROM users');
-      
+
       expect(result).toEqual({
         success: false,
-        error: 'Access to table(s) not allowed: users'
+        error: 'Access to table(s) not allowed: users',
       });
     });
 
     it('should handle database errors', async () => {
       // Mock database to throw an error
       const dbError = new Error('Database connection failed');
-      // @ts-ignore - Access private property for testing
+      // Access private property for testing
       (dbService as any).db.prepare.mockImplementationOnce(() => ({
         all: vi.fn().mockImplementation(() => {
           throw dbError;
-        })
+        }),
       }));
 
       const result = await dbService.executeSafeSelectQuery('SELECT * FROM transactions');
-      
+
       expect(result).toEqual({
         success: false,
-        error: 'Database connection failed'
+        error: 'Database connection failed',
       });
     });
   });
@@ -202,12 +203,18 @@ describe('SQL Validation', () => {
         { query: 'SELECT * FROM transactions t', expected: ['transactions'] },
         { query: 'SELECT * FROM transactions AS t', expected: ['transactions'] },
         { query: 'SELECT * FROM transactions WHERE id = 1', expected: ['transactions'] },
-        { query: 'SELECT * FROM transactions, scraper_credentials', expected: ['transactions', 'scraper_credentials'] },
-        { query: 'SELECT * FROM transactions JOIN scraper_credentials', expected: ['transactions', 'scraper_credentials'] },
+        {
+          query: 'SELECT * FROM transactions, scraper_credentials',
+          expected: ['transactions', 'scraper_credentials'],
+        },
+        {
+          query: 'SELECT * FROM transactions JOIN scraper_credentials',
+          expected: ['transactions', 'scraper_credentials'],
+        },
         { query: 'SELECT * FROM transactions\nWHERE id = 1', expected: ['transactions'] },
       ];
 
-      testCases.forEach(({ query, expected }) => {
+      testCases.forEach(({ query }) => {
         const result = validateSelectQuery(query);
         expect(result).toEqual({ valid: true });
       });

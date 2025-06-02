@@ -1,13 +1,8 @@
 import israeliBankScrapers from 'israeli-bank-scrapers';
 import { sendNotification } from '../utils/notify.js';
-const { CompanyTypes, createScraper } = israeliBankScrapers;
+const { createScraper } = israeliBankScrapers;
 import type { ScraperOptions } from 'israeli-bank-scrapers';
 import { DatabaseService as dbService } from './DatabaseService.js';
-import nodeNotifier from 'node-notifier';
-
-
-// Create notifier instance
-const notifier = nodeNotifier;
 
 // Type for the database instance
 type Database = {
@@ -93,11 +88,15 @@ export class ScraperService {
   }> {
     try {
       // Get all configured scrapers from the database
-      const scraperConfigs = db.prepare(`
+      const scraperConfigs = db
+        .prepare(
+          `
         SELECT id, scraper_type, credentials, friendly_name, tags, last_scraped_timestamp
         FROM scraper_credentials
         WHERE credentials IS NOT NULL
-      `).all() as Array<{
+      `
+        )
+        .all() as Array<{
         id: number;
         scraper_type: string;
         credentials: string;
@@ -118,8 +117,8 @@ export class ScraperService {
           // Calculate start date (1 year ago or last scraped date)
           const oneYearAgo = new Date();
           oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-          
-          const startDate = config.last_scraped_timestamp 
+
+          const startDate = config.last_scraped_timestamp
             ? new Date(new Date(config.last_scraped_timestamp).getTime() + 1000) // Add 1 second to avoid processing the same transaction
             : oneYearAgo;
 
@@ -133,7 +132,7 @@ export class ScraperService {
               friendlyName: config.friendly_name,
               success: false,
               error: 'Invalid credentials format',
-              errorType: 'CredentialsError'
+              errorType: 'CredentialsError',
             });
             continue;
           }
@@ -142,7 +141,7 @@ export class ScraperService {
             scraperType: config.scraper_type as any,
             credentials,
             startDate,
-            showBrowser: false
+            showBrowser: false,
           });
 
           if (result.success && result.accounts) {
@@ -162,20 +161,21 @@ export class ScraperService {
 
             const latestDate = this.getLatestTransactionDate(result.accounts);
             if (latestDate) {
-              db.prepare(`
+              db.prepare(
+                `
                 UPDATE scraper_credentials 
                 SET last_scraped_timestamp = ?
                 WHERE id = ?
-              `).run(latestDate.toISOString(), config.id);
+              `
+              ).run(latestDate.toISOString(), config.id);
             }
 
             await sendNotification({
               title: 'Scraping Complete',
               message: `Successfully scraped ${transactionCount} transactions from ${config.friendly_name}`,
               sound: true,
-              wait: false
+              wait: false,
             });
-
           }
 
           if (!result.success) {
@@ -183,9 +183,9 @@ export class ScraperService {
               config.scraper_type,
               config.friendly_name,
               'Failed to scrape transactions',
-              { 
+              {
                 error: result.errorMessage,
-                errorType: result.errorType
+                errorType: result.errorType,
               }
             );
 
@@ -193,7 +193,7 @@ export class ScraperService {
               title: 'Scraping Failed',
               message: `Failed to scrape ${config.friendly_name}: ${result.errorMessage || 'Unknown error'}`,
               sound: true,
-              wait: false
+              wait: false,
             });
           }
 
@@ -203,9 +203,8 @@ export class ScraperService {
             success: result.success,
             accounts: result.accounts,
             error: result.errorMessage,
-            errorType: result.errorType
+            errorType: result.errorType,
           });
-
         } catch (error: any) {
           console.error(`Error processing ${config.friendly_name}:`, error);
           results.push({
@@ -213,7 +212,7 @@ export class ScraperService {
             friendlyName: config.friendly_name,
             success: false,
             error: error.message || 'Unknown error occurred',
-            errorType: error.name || 'ScraperError'
+            errorType: error.name || 'ScraperError',
           });
         }
       }
@@ -223,13 +222,15 @@ export class ScraperService {
       console.error('Error in fetchAllTransactions:', error);
       return {
         success: false,
-        results: [{
-          scraper: 'global',
-          friendlyName: 'Global',
-          success: false,
-          error: error.message || 'Unknown error occurred',
-          errorType: error.name || 'GlobalError'
-        }]
+        results: [
+          {
+            scraper: 'global',
+            friendlyName: 'Global',
+            success: false,
+            error: error.message || 'Unknown error occurred',
+            errorType: error.name || 'GlobalError',
+          },
+        ],
       };
     }
   }
@@ -251,7 +252,7 @@ export class ScraperService {
         startDate,
         showBrowser,
         verbose: false,
-        timeout: 60000
+        timeout: 60000,
       };
 
       const scraper = createScraper(scraperOptions);
@@ -261,7 +262,7 @@ export class ScraperService {
         ...result,
         success: result.success,
         errorMessage: result.errorMessage,
-        errorType: result.errorType
+        errorType: result.errorType,
       };
     } catch (error: any) {
       console.error(`Error in scrapeAccount for ${scraperType}:`, error);
@@ -269,7 +270,7 @@ export class ScraperService {
         success: false,
         errorMessage: error.message || 'Unknown error occurred',
         errorType: error.name || 'ScraperError',
-        error
+        error,
       };
     }
   }
@@ -277,7 +278,10 @@ export class ScraperService {
   /**
    * Saves scraped transactions to the database
    */
-  private async saveScrapedTransactions(accounts: Array<{ txns: ScraperTransaction[] }>, scraperCredentialId: number): Promise<void> {
+  private async saveScrapedTransactions(
+    accounts: Array<{ txns: ScraperTransaction[] }>,
+    scraperCredentialId: number
+  ): Promise<void> {
     const insertTx = db.prepare(`
       INSERT OR IGNORE INTO transactions (
         scraper_credential_id,
@@ -315,7 +319,8 @@ export class ScraperService {
         try {
           const processedDate = tx.processedDate || tx.date;
           const date = tx.date instanceof Date ? tx.date.toISOString() : tx.date;
-          const processedDateStr = processedDate instanceof Date ? processedDate.toISOString() : processedDate;
+          const processedDateStr =
+            processedDate instanceof Date ? processedDate.toISOString() : processedDate;
 
           insertTx.run({
             scraper_credential_id: scraperCredentialId,
@@ -330,7 +335,7 @@ export class ScraperService {
             chargedCurrency: tx.currency || 'ILS',
             description: tx.description || '',
             memo: tx.memo || null,
-            category: tx.category || null
+            category: tx.category || null,
           });
         } catch (error) {
           console.error('Error saving transaction:', error);
@@ -353,7 +358,7 @@ export class ScraperService {
       for (const tx of account.txns || []) {
         const txDate = tx.date;
         const date = txDate instanceof Date ? txDate : new Date(txDate);
-        
+
         if (!latestDate || date > latestDate) {
           latestDate = date;
         }
