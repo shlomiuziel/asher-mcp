@@ -50,8 +50,8 @@
     "banking",
     "scraper"
   ],
-  "author": "",
-  "license": "ISC",
+  "author": "Shlomi Uziel",
+  "license": "MIT",
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.6",
     "@modelcontextprotocol/sdk": "^1.12.0",
