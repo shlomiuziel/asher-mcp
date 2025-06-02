@@ -44,6 +44,11 @@ Information is scraped and stored in a local, encrypted SQLite database.
    npm install -g .
    ```
 
+5. Install tsx (TypeScript Execute) globally (required for Claude desktop integration):
+   ```bash
+   npm install -g tsx
+   ```
+
 ## Database Location
 
 The database file is stored in the following location, depending on your OS:
