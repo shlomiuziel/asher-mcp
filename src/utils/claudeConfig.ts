@@ -16,14 +16,27 @@ export async function ensureConfigFileExists(configPath: string): Promise<Claude
   try {
     const raw = await readFile(configPath, 'utf-8');
     const config = JSON.parse(raw);
+
     // Ensure the config has the right structure
     if (!config.mcpServers) {
       config.mcpServers = {};
     }
     return config;
-  } catch (_e) {
-    // If file doesn't exist or is invalid, create a new config
-    return { mcpServers: {} };
+  } catch (error: unknown) {
+    const err = error as NodeJS.ErrnoException;
+    if (err.code === 'ENOENT') {
+      // File doesn't exist, create a new config
+      const newConfig = { mcpServers: {} };
+      await writeFile(configPath, JSON.stringify(newConfig, null, 2));
+      return newConfig;
+    } else if (error instanceof SyntaxError) {
+      // File exists but has invalid JSON - don't modify it, just report the error
+      throw new Error(
+        `Configuration file at ${configPath} contains invalid JSON. Please fix or remove the file.`
+      );
+    }
+    // For other errors, rethrow
+    throw error;
   }
 }
 
@@ -82,7 +95,7 @@ export async function configureClaudeIntegration(
         '✅ Updated Claude desktop config with asher-financial-aggregator integration.\n  You can now use Asher as a tool in Claude desktop.',
     };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = error instanceof Error ? error.message : String(error);
     const manualConfig = JSON.stringify(
       {
         mcpServers: {
@@ -96,9 +109,13 @@ export async function configureClaudeIntegration(
       2
     );
 
+    const { configPath } = getConfigPath();
+    let message = `⚠️ Could not configure Claude desktop integration:\n${errorMessage}`;
+    message += `\n\nYou can manually configure Claude desktop by adding the following to ${configPath}:\n${manualConfig}`;
+
     return {
       success: false,
-      message: `⚠️ Could not configure Claude desktop integration:\n${errorMessage}\n\nYou can manually configure Claude desktop by adding the following to your ~/.config/claude/claude_desktop_config.json:\n${manualConfig}`,
+      message,
     };
   }
 }

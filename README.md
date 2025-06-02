@@ -33,11 +33,15 @@ Information is scraped and stored in a local, encrypted SQLite database.
    ```bash
    npm install
    ```
-   **Optional**: Install the system wide `asher` cli command with the `-g` flag.
 
 3. Build the project:
    ```bash
    npm run build
+   ```
+
+4. **Optional**: Install the system wide `asher` cli command:
+   ```bash
+   npm install -g .
    ```
 
 ## Database Location
