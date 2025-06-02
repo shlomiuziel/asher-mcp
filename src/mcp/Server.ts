@@ -54,19 +54,15 @@ class Server {
 
   private textResponse(text: string): { content: TextContent[] } {
     return {
-      content: [{ type: 'text', text }]
+      content: [{ type: 'text', text }],
     };
   }
 
-  private registerTool(
-    name: string, 
-    handler: ToolHandler,
-    schema?: ToolSchema
-  ) {
+  private registerTool(name: string, handler: ToolHandler, schema?: ToolSchema) {
     this.tools.set(name, { handler, schema });
-    
+
     const { description, inputSchema } = schema || {};
-    
+
     this.server.tool(
       name,
       description || '',
@@ -77,10 +73,7 @@ class Server {
           return this.textResponse(JSON.stringify(result));
         } catch (error: any) {
           console.error(`Error in ${name}:`, error);
-          throw new McpError(
-            ErrorCode.InternalError,
-            error.message || `Error in ${name}`
-          );
+          throw new McpError(ErrorCode.InternalError, error.message || `Error in ${name}`);
         }
       }
     );
@@ -99,9 +92,9 @@ class Server {
 
   private setupTools() {
     this.registerTool(
-      'listTables', 
+      'listTables',
       async () => {
-        return this.withDb(async (db) => {
+        return this.withDb(async db => {
           const result = await db.listTables();
           if (!result.success) {
             throw new Error(result.error || 'Failed to list tables');
@@ -115,13 +108,13 @@ class Server {
     );
 
     this.registerTool(
-      'getTableSchema', 
+      'getTableSchema',
       async (params: Record<string, unknown>) => {
         const { table } = params as { table: string };
         if (!table) {
           throw new Error('Table name is required');
         }
-        return this.withDb(async (db) => {
+        return this.withDb(async db => {
           const result = await db.executeSafeSelectQuery(`PRAGMA table_info(${table})`);
           if (!result.success) {
             throw new Error(result.error || 'Failed to get table schema');
@@ -132,20 +125,20 @@ class Server {
       {
         description: 'Get the schema for a specific table',
         inputSchema: {
-          table: z.string().describe('Name of the table to get schema for')
-        }
+          table: z.string().describe('Name of the table to get schema for'),
+        },
       }
     );
 
     this.registerTool(
-      'sqlQuery', 
+      'sqlQuery',
       async (params: Record<string, unknown>) => {
         const { query } = params as { query: string };
         if (!query) {
           throw new Error('Query is required');
         }
-        
-        return this.withDb(async (db) => {
+
+        return this.withDb(async db => {
           const result = await db.executeSafeSelectQuery(query);
           if (!result.success) {
             throw new Error(result.error || 'Query execution failed');
@@ -156,72 +149,72 @@ class Server {
       {
         description: 'Execute a safe SELECT query on allowed tables',
         inputSchema: {
-          query: z.string().describe('SQL SELECT query to execute')
-        }
+          query: z.string().describe('SQL SELECT query to execute'),
+        },
       }
     );
 
     this.registerTool(
-      'describeTable', 
+      'describeTable',
       async (params: Record<string, unknown>) => {
         const { table } = params as { table: string };
         if (!table) {
           throw new Error('Table name is required');
         }
-        return this.withDb(async (db) => {
+        return this.withDb(async db => {
           const columnsResult = await db.executeSafeSelectQuery(`PRAGMA table_info(${table})`);
           const indexesResult = await db.executeSafeSelectQuery(`PRAGMA index_list(${table})`);
-          
+
           if (!columnsResult.success) {
             throw new Error(columnsResult.error || 'Failed to get table columns');
           }
           if (!indexesResult.success) {
             throw new Error(indexesResult.error || 'Failed to get table indexes');
           }
-          
-          return { 
-            success: true, 
-            data: { 
-              columns: columnsResult.data, 
-              indexes: indexesResult.data 
-            } 
+
+          return {
+            success: true,
+            data: {
+              columns: columnsResult.data,
+              indexes: indexesResult.data,
+            },
           };
         });
       },
       {
         description: 'Get detailed information about a table including columns and indexes',
         inputSchema: {
-          table: z.string().describe('Name of the table to describe')
-        }
+          table: z.string().describe('Name of the table to describe'),
+        },
       }
     );
 
     this.registerTool(
-      'listScrapers', 
+      'listScrapers',
       async () => {
         const scrapers = Object.entries(CompanyTypes)
           .filter(([key]) => isNaN(Number(key)))
           .map(([key]) => key);
-        
+
         return { success: true, data: { scrapers } };
       },
       {
         description: 'List all available bank scrapers',
-        inputSchema: {}
+        inputSchema: {},
       }
     );
 
     this.registerTool(
-      'fetchTransactions', 
+      'fetchTransactions',
       async () => {
         return this.withDb(async () => {
           try {
             // Import the ScraperService
             const { scraperService } = await import('../services/ScraperService.js');
-            
+
             // Fetch transactions using the ScraperService
             const result = await scraperService.fetchAllTransactions();
-            
+
             // Format the response
             return {
               success: result.success,
@@ -232,39 +225,39 @@ class Server {
                   success: r.success,
                   error: r.error,
                   errorType: r.errorType,
-                  transactionCount: r.accounts?.reduce((sum, acc) => sum + (acc.txns?.length || 0), 0) || 0
+                  transactionCount:
+                    r.accounts?.reduce((sum, acc) => sum + (acc.txns?.length || 0), 0) || 0,
                 })),
                 totalTransactions: result.results.reduce(
-                  (sum, r) => sum + (r.accounts?.reduce((s, acc) => s + (acc.txns?.length || 0), 0) || 0),
+                  (sum, r) =>
+                    sum + (r.accounts?.reduce((s, acc) => s + (acc.txns?.length || 0), 0) || 0),
                   0
-                )
-              }
+                ),
+              },
             };
           } catch (error: any) {
             console.error('Error in fetchTransactions:', error);
             return {
               success: false,
               error: error.message || 'Unknown error occurred',
-              errorType: error.name || 'ScraperError'
+              errorType: error.name || 'ScraperError',
             };
           }
         });
       },
       {
         description: 'Fetch transactions from all configured bank scrapers',
-        inputSchema: {}
+        inputSchema: {},
       }
     );
 
-    this.server.prompt(
-      "fetch-last-month-transactions",
-      () => ({
-        messages: [
-          {
-            role: "user",
-            content: {
-              type: "text",
-              text: `Fetch transactions from the last month and calculate the total expenses. Make sure to:
+    this.server.prompt('fetch-last-month-transactions', () => ({
+      messages: [
+        {
+          role: 'user',
+          content: {
+            type: 'text',
+            text: `Fetch transactions from the last month and calculate the total expenses. Make sure to:
                       1. Query the database for transactions within the last month's date range
                       2. Filter for expenses (negative amounts)
                       3. Sum up the total expenses
@@ -272,11 +265,10 @@ class Server {
                         - Total expenses amount
                         - Number of transactions
                         - List of transactions with dates and amounts`,
-            },
           },
-        ],
-      })
-    );
+        },
+      ],
+    }));
   }
 
   public async start() {
@@ -300,10 +292,10 @@ const isMain = process.argv[1] && process.argv[1] === new URL(import.meta.url).p
 // Main function to start the server when run directly
 async function main() {
   console.log('Starting MCP Server...');
-  
+
   try {
     const server = new Server();
-    
+
     // Handle process termination
     // const shutdown = async (signal: string) => {
     //   console.log(`\nReceived ${signal}, shutting down...`);
@@ -320,11 +312,10 @@ async function main() {
     // // Set up signal handlers
     // process.on('SIGINT', () => void shutdown('SIGINT'));
     // process.on('SIGTERM', () => void shutdown('SIGTERM'));
-    
+
     // Start the server
     await server.start();
     console.log('MCP Server is running. Press Ctrl+C to stop.');
-    
   } catch (error) {
     console.error('Failed to start MCP Server:', error);
     process.exit(1);

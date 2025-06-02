@@ -23,14 +23,22 @@ type Color = keyof typeof colors;
  * @param color Text color (default: 'blue')
  * @returns Formatted section header
  */
-export function createSection({ title, emoji = '', color = 'blue' }: { title: string; emoji?: string; color?: Color }): string {
+export function createSection({
+  title,
+  emoji = '',
+  color = 'blue',
+}: {
+  title: string;
+  emoji?: string;
+  color?: Color;
+}): string {
   const emojiPrefix = emoji ? `${emoji}  ` : '';
   const content = `${emojiPrefix}${title}`.trim();
-  
+
   // Apply chalk styles
   const colorFn = colors[color] || colors.blue;
   const coloredContent = colorFn(content);
-  
+
   return `\n${chalk.bold(coloredContent)}\n${'─'.repeat(content.length)}`;
 }
 

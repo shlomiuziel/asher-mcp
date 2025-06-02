@@ -36,14 +36,14 @@ export async function sendNotification(options: NotificationOptions): Promise<vo
       subtitle: options.subtitle,
       closeLabel: options.closeLabel,
       actions: options.actions,
-      replyButton: options.replyButton
+      replyButton: options.replyButton,
     };
-    
+
     // Get the callback from options if provided
     const callback = options.callback;
-    
-    // @ts-ignore - node-notifier types are not perfect
-    notifier.notify(notificationOptions, (err: any, response: any, metadata?: any) => {
+
+    // Use type assertion for node-notifier as its types are not perfect with callback parameters
+    (notifier as any).notify(notificationOptions, (err: any, response: any, metadata?: any) => {
       if (err) {
         // If a callback was provided, call it with the error
         if (callback) {
@@ -52,7 +52,7 @@ export async function sendNotification(options: NotificationOptions): Promise<vo
         reject(err);
         return;
       }
-      
+
       // If a callback was provided, call it with the response
       if (callback) {
         callback(null, response, metadata);

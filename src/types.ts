@@ -99,7 +99,7 @@ export interface BeyhadBishvilhaCredentials {
 export interface BaseScraperConfig {
   scraper_type: CompanyType;
   friendly_name: string; // Mandatory
-  tags?: string[];        // Optional
+  tags?: string[]; // Optional
 }
 
 // Discriminated union type for all scraper configurations
@@ -117,7 +117,10 @@ export type ScraperConfig =
   | (BaseScraperConfig & { scraper_type: 'isracard'; credentials: IsracardCredentials })
   | (BaseScraperConfig & { scraper_type: 'amex'; credentials: AmexCredentials })
   | (BaseScraperConfig & { scraper_type: 'yahav'; credentials: YahavCredentials })
-  | (BaseScraperConfig & { scraper_type: 'beyhadBishvilha'; credentials: BeyhadBishvilhaCredentials });
+  | (BaseScraperConfig & {
+      scraper_type: 'beyhadBishvilha';
+      credentials: BeyhadBishvilhaCredentials;
+    });
 
 export interface Transaction {
   identifier: string; // From scraper, part of compound PK

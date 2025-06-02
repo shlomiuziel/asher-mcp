@@ -18,28 +18,36 @@ const originalConsole = {
 export function redirectConsoleToStderr() {
   // Override console methods to use stderr
   console.log = (...args: any[]) => {
-    process.stderr.write(`${args.map(arg => 
-      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-    ).join(' ')}` + '\n');
+    process.stderr.write(
+      `${args
+        .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
+        .join(' ')}` + '\n'
+    );
   };
 
   console.info = (...args: any[]) => {
-    process.stderr.write(`[INFO] ${args.map(arg => 
-      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-    ).join(' ')}` + '\n');
+    process.stderr.write(
+      `[INFO] ${args
+        .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
+        .join(' ')}` + '\n'
+    );
   };
 
   console.debug = (...args: any[]) => {
-    process.stderr.write(`[DEBUG] ${args.map(arg => 
-      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-    ).join(' ')}` + '\n');
+    process.stderr.write(
+      `[DEBUG] ${args
+        .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
+        .join(' ')}` + '\n'
+    );
   };
 
   // Keep warn and error as they already use stderr by default
   console.warn = (...args: any[]) => {
-    process.stderr.write(`[WARN] ${args.map(arg => 
-      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-    ).join(' ')}` + '\n');
+    process.stderr.write(
+      `[WARN] ${args
+        .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
+        .join(' ')}` + '\n'
+    );
   };
 
   console.error = originalConsole.error; // Already uses stderr

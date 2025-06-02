@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3-multiple-ciphers';
-import { ScraperCredentialRow, TransactionRow, Transaction } from '../types.js';
+import { ScraperCredentialRow, TransactionRow } from '../types.js';
 import { existsSync, chmodSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
@@ -9,7 +9,7 @@ import { encryptionKeyService } from './EncryptionKeyService.js';
 // Cross-platform app data directory
 function getAppDataPath() {
   const home = homedir();
-  
+
   switch (process.platform) {
     case 'win32':
       return process.env.APPDATA || join(home, 'AppData', 'Roaming');
@@ -28,18 +28,18 @@ export class DatabaseService {
   private static getDefaultDbPath(): string {
     const appDataDir = join(getAppDataPath(), 'Asher');
     const dbPath = join(appDataDir, 'transactions.db');
-    
+
     // Ensure the directory exists
     if (!existsSync(appDataDir)) {
       mkdirSync(appDataDir, { recursive: true });
     }
-    
+
     return dbPath;
   }
 
   private constructor(dbPath: string) {
     this.dbPath = dbPath || DatabaseService.getDefaultDbPath();
-    
+
     // Ensure the directory exists for the custom path if provided
     if (dbPath) {
       const dir = dirname(dbPath);
@@ -74,12 +74,14 @@ export class DatabaseService {
       db.pragma(`legacy=4`);
       db.pragma(`${isNewDatabase ? 'rekey' : 'key'}='${key}'`);
       // Basic check — try accessing the schema
-      console.log(db.prepare("PRAGMA schema_version").get());
+      console.log(db.prepare('PRAGMA schema_version').get());
     } catch (error) {
       encryptionKeyService.clearKey();
       db.close();
-      throw new Error(`${error instanceof Error ? error.message : 'Unknown error'}, incorrect key?`);
-    } 
+      throw new Error(
+        `${error instanceof Error ? error.message : 'Unknown error'}, incorrect key?`
+      );
+    }
   }
 
   /**
@@ -97,10 +99,10 @@ export class DatabaseService {
     }
 
     const isNewDatabase = !(await this.databaseExists());
-    
+
     // Create a new database connection
     const db = new Database(this.dbPath);
-    
+
     // If this is a new database, set restrictive permissions
     if (isNewDatabase) {
       try {
@@ -108,21 +110,23 @@ export class DatabaseService {
         chmodSync(this.dbPath, 0o600);
       } catch (error) {
         db.close();
-        throw new Error(`Failed to set database file permissions: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw new Error(
+          `Failed to set database file permissions: ${error instanceof Error ? error.message : 'Unknown error'}`
+        );
       }
     }
-    
+
     await this.applyEncryption(db, isNewDatabase);
-    
+
     this.db = db;
-    
+
     try {
       // Initialize the database schema
       this.initializeDatabase();
-      
+
       // Mark as initialized
       this.initialized = true;
-      
+
       return db;
     } catch (error) {
       // If initialization fails, clean up
@@ -136,17 +140,17 @@ export class DatabaseService {
   public static getInstance(dbPath?: string): DatabaseService {
     // If no path provided, use the default one
     const pathToUse = dbPath || DatabaseService.getDefaultDbPath();
-    
+
     // If we have an instance but it's for a different path, reset it
     if (DatabaseService.instance && DatabaseService.instance.dbPath !== pathToUse) {
       DatabaseService.instance.close().catch(console.error);
       DatabaseService.instance = null;
     }
-    
+
     if (!DatabaseService.instance) {
       DatabaseService.instance = new DatabaseService(pathToUse);
     }
-    
+
     return DatabaseService.instance;
   }
 
@@ -159,15 +163,15 @@ export class DatabaseService {
 
   private initializeDatabase(): void {
     const db = this.db;
-    
+
     // This should never happen because we check in the caller, but TypeScript needs this
     if (!db) {
       throw new Error('Database connection not established');
     }
-    
+
     // Enable foreign key support
     db.pragma('foreign_keys = ON');
-    
+
     try {
       // Create tables if they don't exist
       db.exec(`
@@ -219,10 +223,15 @@ export class DatabaseService {
     }
   }
 
-  public async upsertScraperCredential(credentials: Omit<ScraperCredentialRow, 'id' | 'createdAt' | 'updatedAt' | 'last_scraped_timestamp'>): Promise<number> {
+  public async upsertScraperCredential(
+    credentials: Omit<
+      ScraperCredentialRow,
+      'id' | 'createdAt' | 'updatedAt' | 'last_scraped_timestamp'
+    >
+  ): Promise<number> {
     this.ensureReady();
     const db = this.assertInitialized();
-    
+
     const stmt = db.prepare(`
       INSERT INTO scraper_credentials (
         scraper_type, 
@@ -240,13 +249,8 @@ export class DatabaseService {
     const { scraper_type, credentials: creds, friendly_name, tags } = credentials;
     const tagsJson = typeof tags === 'string' ? tags : JSON.stringify(tags || []);
 
-    const result = stmt.get(
-      scraper_type,
-      creds,
-      friendly_name,
-      tagsJson
-    ) as { id: number };
-    
+    const result = stmt.get(scraper_type, creds, friendly_name, tagsJson) as { id: number };
+
     return result.id;
   }
 
@@ -265,19 +269,23 @@ export class DatabaseService {
     );
     stmt.run(timestamp, friendlyName);
   }
-  
-  public async getScraperCredentialByFriendlyName(friendlyName: string): Promise<ScraperCredentialRow | null> {
+
+  public async getScraperCredentialByFriendlyName(
+    friendlyName: string
+  ): Promise<ScraperCredentialRow | null> {
     this.ensureReady();
     const db = this.assertInitialized();
     const stmt = db.prepare('SELECT * FROM scraper_credentials WHERE friendly_name = ?');
-    return stmt.get(friendlyName) as ScraperCredentialRow || null;
+    return (stmt.get(friendlyName) as ScraperCredentialRow) || null;
   }
 
   // Transaction methods
-  public async saveTransaction(transaction: Omit<TransactionRow, 'id' | 'createdAt' | 'updatedAt'>): Promise<number> {
+  public async saveTransaction(
+    transaction: Omit<TransactionRow, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<number> {
     this.ensureReady();
     const db = this.assertInitialized();
-    
+
     const stmt = db.prepare(`
       INSERT INTO transactions (
         scraper_credential_id, identifier, type, status, date, processedDate, 
@@ -335,7 +343,7 @@ export class DatabaseService {
   }
 
   public close(): Promise<void> {
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const db = this.assertInitialized();
       db.close();
       this.db = null;
@@ -373,16 +381,16 @@ export class DatabaseService {
   public async listTables(): Promise<{ success: boolean; tables?: string[]; error?: string }> {
     try {
       const db = this.assertInitialized();
-      const rows = db.prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
-      ).all();
-      
+      const rows = db
+        .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+        .all();
+
       const tables = rows.map((row: { name: string }) => row.name);
       return { success: true, tables };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to list tables' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to list tables',
       };
     }
   }
@@ -397,15 +405,15 @@ export class DatabaseService {
     }
 
     try {
-      const db = (this.db as any) as Database;
-      
+      const db = this.db as any as Database;
+
       // Execute the query
       const result = db.prepare(query).all();
       return { success: true, data: result };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error executing query' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error executing query',
       };
     }
   }
@@ -416,9 +424,12 @@ export class DatabaseService {
    * @param params Parameters for prepared statement
    * @returns Result object with changes and lastID
    */
-  public async execute(query: string, params: any[] = []): Promise<{ 
-    changes: number; 
-    lastInsertRowid: number | bigint 
+  public async execute(
+    query: string,
+    params: any[] = []
+  ): Promise<{
+    changes: number;
+    lastInsertRowid: number | bigint;
   }> {
     try {
       const db = this.assertInitialized();
@@ -426,7 +437,7 @@ export class DatabaseService {
       const result = params.length > 0 ? stmt.run(...params) : stmt.run();
       return {
         changes: result.changes,
-        lastInsertRowid: result.lastInsertRowid
+        lastInsertRowid: result.lastInsertRowid,
       };
     } catch (error) {
       console.error('Execute failed:', query, error);

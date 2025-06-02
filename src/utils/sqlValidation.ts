@@ -34,7 +34,7 @@ export function validateSelectQuery(sql: string): { valid: boolean; reason?: str
       if (!allowedTables.has(tableName)) {
         return {
           valid: false,
-          reason: `Access to table not allowed in PRAGMA: ${tableName}`
+          reason: `Access to table not allowed in PRAGMA: ${tableName}`,
         };
       }
       return { valid: true };
@@ -50,14 +50,14 @@ export function validateSelectQuery(sql: string): { valid: boolean; reason?: str
     if (disallowedTables.length > 0) {
       return {
         valid: false,
-        reason: `Access to table(s) not allowed: ${disallowedTables.join(', ')}`
+        reason: `Access to table(s) not allowed: ${disallowedTables.join(', ')}`,
       };
     }
 
     // Additional validation with SQL parser
     try {
       const ast = parser.astify(trimmedSql, { database: 'SQLite' });
-      
+
       // Handle case where multiple statements might be parsed
       if (Array.isArray(ast)) {
         return { valid: false, reason: 'Only one statement is allowed' };
@@ -70,15 +70,15 @@ export function validateSelectQuery(sql: string): { valid: boolean; reason?: str
 
       return { valid: true };
     } catch (parseError) {
-      return { 
-        valid: false, 
-        reason: `Invalid SQL syntax: ${parseError instanceof Error ? parseError.message : 'Unknown error'}` 
+      return {
+        valid: false,
+        reason: `Invalid SQL syntax: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
       };
     }
   } catch (error) {
-    return { 
-      valid: false, 
-      reason: error instanceof Error ? error.message : 'Unknown error during validation' 
+    return {
+      valid: false,
+      reason: error instanceof Error ? error.message : 'Unknown error during validation',
     };
   }
 }
@@ -129,6 +129,3 @@ function containsUnquotedSemicolon(sql: string): boolean {
 
   return false; // No unquoted semicolon found
 }
-
-
-

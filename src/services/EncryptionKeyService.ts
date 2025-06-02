@@ -1,4 +1,3 @@
-
 import { sendNotification } from '../utils/notify.js';
 import type { NotificationOptions, NotificationCallback } from '../utils/notify.js';
 
@@ -81,7 +80,7 @@ export class EncryptionKeyService {
     try {
       return new Promise<string>((resolve, reject) => {
         console.log('\n=== Encryption Key Required ===');
-        
+
         const notificationOptions: NotificationOptions = {
           title: 'Encryption Key Required',
           message: 'Please enter the encryption key for the database',
@@ -89,7 +88,7 @@ export class EncryptionKeyService {
           sound: 'Funk',
           timeout: 30,
           wait: true,
-          reply: 'Input your encryption key'
+          reply: 'Input your encryption key',
         };
 
         // Define the callback to handle notification responses
@@ -112,10 +111,12 @@ export class EncryptionKeyService {
             // The key could be in different metadata properties depending on the platform
             const key = (
               metadata?.activationValue || // macOS
-              metadata?.response ||       // Windows/Linux
+              metadata?.response || // Windows/Linux
               ''
-            ).toString().trim();
-            
+            )
+              .toString()
+              .trim();
+
             if (!key) {
               console.error('Error: Encryption key cannot be empty');
               this.promptForEncryptionKey(attempt + 1)
@@ -123,31 +124,33 @@ export class EncryptionKeyService {
                 .catch(reject);
               return;
             }
-            
+
             try {
               this.setKey(key);
               this.isPrompting = false;
               resolve(key);
             } catch (error) {
-              console.error('Error setting encryption key:', error instanceof Error ? error.message : String(error));
+              console.error(
+                'Error setting encryption key:',
+                error instanceof Error ? error.message : String(error)
+              );
               this.promptForEncryptionKey(attempt + 1)
                 .then(resolve)
                 .catch(reject);
             }
           }
         };
-        
+
         try {
           const optionsWithCallback = {
             ...notificationOptions,
-            callback: handleNotificationResponse
+            callback: handleNotificationResponse,
           };
-          
-          sendNotification(optionsWithCallback)
-            .catch(error => {
-              console.error('Failed to send notification:', error);
-              this.promptTerminalForEncryptionKey(attempt, resolve, reject);
-            });
+
+          sendNotification(optionsWithCallback).catch(error => {
+            console.error('Failed to send notification:', error);
+            this.promptTerminalForEncryptionKey(attempt, resolve, reject);
+          });
         } catch (error) {
           console.error('Error sending notification:', error);
           this.promptTerminalForEncryptionKey(attempt, resolve, reject);
@@ -169,11 +172,11 @@ export class EncryptionKeyService {
     reject: (reason?: any) => void
   ): void {
     console.log('\nPlease enter the encryption key for the database:');
-    
+
     process.stdin.setEncoding('utf8');
     process.stdin.once('data', (input: string) => {
       const key = input.trim();
-      
+
       if (!key) {
         console.error('Error: Encryption key cannot be empty');
         this.promptForEncryptionKey(attempt + 1)
@@ -181,13 +184,16 @@ export class EncryptionKeyService {
           .catch(reject);
         return;
       }
-      
+
       try {
         this.setKey(key);
         this.isPrompting = false;
         resolve(key);
       } catch (error) {
-        console.error('Error setting encryption key:', error instanceof Error ? error.message : String(error));
+        console.error(
+          'Error setting encryption key:',
+          error instanceof Error ? error.message : String(error)
+        );
         this.promptTerminalForEncryptionKey(attempt + 1, resolve, reject);
       }
     });
