@@ -2,7 +2,7 @@ import sqlParser from 'node-sql-parser';
 const { Parser } = sqlParser;
 
 const parser = new Parser();
-const allowedTables = new Set(['transactions', 'scraper_credentials']);
+const allowedTables = new Set(['transactions']);
 
 /**
  * Validates if a SQL query is a safe SELECT query
