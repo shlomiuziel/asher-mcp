@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/shlomiuziel-asher-mcp-badge.png)](https://mseep.ai/app/shlomiuziel-asher-mcp)
+
 # Asher - Personal Financial Data MCP Server
 
 > **Get closer to your own data, on steroids!**
