@@ -128,7 +128,6 @@ export class PostgreSQLDatabaseService implements DatabaseService {
         );
 
         CREATE TABLE IF NOT EXISTS transactions (
-          id SERIAL,
           scraper_credential_id INTEGER NOT NULL,
           identifier TEXT NOT NULL,
           type TEXT,
@@ -255,14 +254,14 @@ export class PostgreSQLDatabaseService implements DatabaseService {
     const client = await this.pool!.connect();
 
     try {
-      const result = await client.query(
+      await client.query(
         `
         INSERT INTO transactions (
           scraper_credential_id, identifier, type, status, date, processedDate, 
           originalAmount, originalCurrency, chargedAmount, chargedCurrency, 
           description, memo, category
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
-        RETURNING id;
+        ON CONFLICT (scraper_credential_id, identifier) DO NOTHING;
       `,
         [
           transaction.scraper_credential_id,
@@ -281,7 +280,7 @@ export class PostgreSQLDatabaseService implements DatabaseService {
         ]
       );
 
-      return result.rows[0].id;
+      return transaction.scraper_credential_id;
     } finally {
       client.release();
     }

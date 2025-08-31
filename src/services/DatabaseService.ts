@@ -293,10 +293,10 @@ export class SQLiteDatabaseService implements DatabaseServiceInterface {
         originalAmount, originalCurrency, chargedAmount, chargedCurrency, 
         description, memo, category
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      RETURNING id;
+      ON CONFLICT (scraper_credential_id, identifier) DO NOTHING
     `);
 
-    const result = stmt.get(
+    stmt.run(
       transaction.scraper_credential_id,
       transaction.identifier,
       transaction.type || null,
@@ -310,9 +310,9 @@ export class SQLiteDatabaseService implements DatabaseServiceInterface {
       transaction.description,
       transaction.memo || null,
       transaction.category || null
-    ) as { id: number };
+    );
 
-    return result.id;
+    return transaction.scraper_credential_id;
   }
 
   public async getTransactions(
