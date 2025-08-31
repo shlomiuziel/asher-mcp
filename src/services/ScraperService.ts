@@ -143,9 +143,9 @@ export class ScraperService {
 
             const latestDate = this.getLatestTransactionDate(result.accounts);
             if (latestDate) {
-              await databaseService.execute(
-                'UPDATE scraper_credentials SET last_scraped_timestamp = $1 WHERE id = $2',
-                [latestDate.toISOString(), config.id]
+              await databaseService.updateLastScrapedTimestamp(
+                config.friendly_name,
+                latestDate.toISOString()
               );
             }
 
