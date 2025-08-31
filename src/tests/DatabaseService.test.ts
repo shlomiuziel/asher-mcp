@@ -27,13 +27,13 @@ vi.mock('../services/EncryptionKeyService.js', () => ({
 }));
 
 vi.mock('../services/DatabaseService.js', () => ({
-  DatabaseService: {
+  SQLiteDatabaseService: {
     getInstance: vi.fn(() => mockDbService),
   },
 }));
 
 // Import after setting up mocks
-import { DatabaseService } from '../services/DatabaseService.js';
+import { SQLiteDatabaseService } from '../services/DatabaseService.js';
 
 describe('DatabaseService', () => {
   beforeEach(() => {
@@ -73,7 +73,7 @@ describe('DatabaseService', () => {
 
       mockDbService.getScraperCredentials.mockResolvedValueOnce(mockCredentials);
 
-      const db = DatabaseService.getInstance();
+      const db = SQLiteDatabaseService.getInstance();
       const credentials = await db.getScraperCredentials();
 
       expect(credentials).toEqual(mockCredentials);
@@ -94,7 +94,7 @@ describe('DatabaseService', () => {
 
       mockDbService.getScraperCredentialByFriendlyName.mockResolvedValueOnce(mockCredential);
 
-      const db = DatabaseService.getInstance();
+      const db = SQLiteDatabaseService.getInstance();
       const credential = await db.getScraperCredentialByFriendlyName('Test Account');
 
       expect(credential).toEqual(mockCredential);
@@ -105,7 +105,7 @@ describe('DatabaseService', () => {
       const friendlyName = 'Test Account';
       const timestamp = new Date().toISOString();
 
-      const db = DatabaseService.getInstance();
+      const db = SQLiteDatabaseService.getInstance();
       await db.updateLastScrapedTimestamp(friendlyName, timestamp);
 
       expect(mockDbService.updateLastScrapedTimestamp).toHaveBeenCalledWith(
@@ -118,7 +118,7 @@ describe('DatabaseService', () => {
       const scraperId = '1';
       mockDbService.deleteScraperCredentials.mockResolvedValueOnce(true);
 
-      const db = DatabaseService.getInstance();
+      const db = SQLiteDatabaseService.getInstance();
       const result = await db.deleteScraperCredentials(scraperId);
 
       expect(result).toBe(true);
@@ -135,7 +135,7 @@ describe('DatabaseService', () => {
       const credentialId = 1;
       mockDbService.upsertScraperCredential.mockResolvedValueOnce(credentialId);
 
-      const db = DatabaseService.getInstance();
+      const db = SQLiteDatabaseService.getInstance();
       const result = await db.upsertScraperCredential(credential);
 
       expect(result).toBe(credentialId);
@@ -167,7 +167,7 @@ describe('DatabaseService', () => {
 
       mockDbService.getTransactions.mockResolvedValueOnce(mockTransactions);
 
-      const db = DatabaseService.getInstance();
+      const db = SQLiteDatabaseService.getInstance();
       const startDate = new Date('2025-01-01');
       const endDate = new Date('2025-12-31');
       const transactions = await db.getTransactions(testCredentialId, startDate, endDate);
@@ -183,7 +183,7 @@ describe('DatabaseService', () => {
     it('should handle empty transactions', async () => {
       mockDbService.getTransactions.mockResolvedValueOnce([]);
 
-      const db = DatabaseService.getInstance();
+      const db = SQLiteDatabaseService.getInstance();
       const transactions = await db.getTransactions(testCredentialId, undefined, undefined);
 
       expect(transactions).toEqual([]);
@@ -215,7 +215,7 @@ describe('DatabaseService', () => {
 
       mockDbService.getTransactions.mockResolvedValueOnce(mockTransactions);
 
-      const db = DatabaseService.getInstance();
+      const db = SQLiteDatabaseService.getInstance();
       const startDate = new Date('2025-05-24T00:00:00.000Z');
       const endDate = new Date('2025-05-24T23:59:59.999Z');
       const transactions = await db.getTransactions(testCredentialId, startDate, endDate);
@@ -247,7 +247,7 @@ describe('DatabaseService', () => {
 
       mockDbService.saveTransaction.mockResolvedValueOnce(3);
 
-      const db = DatabaseService.getInstance();
+      const db = SQLiteDatabaseService.getInstance();
       const result = await db.saveTransaction(testTransaction);
 
       expect(result).toBe(3);

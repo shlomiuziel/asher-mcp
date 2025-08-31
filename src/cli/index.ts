@@ -7,6 +7,8 @@ import { program } from 'commander';
 import inquirer from 'inquirer';
 import { sendNotification } from '../utils/notify.js';
 import { ingestCredentials } from './ingestCredentials.js';
+import { DatabaseFactory } from '../services/DatabaseFactory.js';
+import { PostgreSQLDatabaseService } from '../services/PostgreSQLDatabaseService.js';
 import { createSection } from '../utils/cli.js';
 import { configureClaudeIntegration } from '../utils/claudeConfig.js';
 
@@ -31,54 +33,60 @@ program
     try {
       await ingestCredentials(options.file, options.key);
 
-      // Notification Setup Section
-      console.log(
-        createSection({
-          title: 'Notification Setup',
-          emoji: '📢',
-          color: 'blue',
-        })
-      );
+      // Check if we're using PostgreSQL (no encryption, so no notifications needed)
+      const dbService = DatabaseFactory.getInstance();
+      const isPostgreSQL = dbService instanceof PostgreSQLDatabaseService;
 
-      const { enableNotifications } = await inquirer.prompt([
-        {
-          type: 'confirm',
-          name: 'enableNotifications',
-          message:
-            '  We use desktop notifications to fetch the decryption password.\n  Please make sure terminal-notifier is enabled in your system settings.\n\n  Do you want to test it now?',
-          default: true,
-          prefix: '  ',
-          suffix: '\n',
-        },
-      ]);
-
-      console.log('\n'); // Add extra spacing
-
-      if (enableNotifications) {
-        console.log('  🔔  A test notification will appear shortly.');
+      // Notification Setup Section (only for SQLite databases with encryption)
+      if (!isPostgreSQL) {
         console.log(
-          '  Please enable notifications for "terminal-notifier" in your system settings when prompted.\n'
+          createSection({
+            title: 'Notification Setup',
+            emoji: '📢',
+            color: 'blue',
+          })
         );
 
-        try {
-          await sendNotification({
-            title: 'Asher CLI - Test Notification',
-            message: 'This is a test notification.',
-            sound: true,
-            wait: false,
-            timeout: 15,
-          });
-          console.log('  ✅  Test notification sent successfully!');
+        const { enableNotifications } = await inquirer.prompt([
+          {
+            type: 'confirm',
+            name: 'enableNotifications',
+            message:
+              '  We use desktop notifications to fetch the decryption password.\n  Please make sure terminal-notifier is enabled in your system settings.\n\n  Do you want to test it now?',
+            default: true,
+            prefix: '  ',
+            suffix: '\n',
+          },
+        ]);
+
+        console.log('\n'); // Add extra spacing
+
+        if (enableNotifications) {
+          console.log('  🔔  A test notification will appear shortly.');
           console.log(
-            "  ℹ️   If you didn't see it, please check your system notification settings.\n"
+            '  Please enable notifications for "terminal-notifier" in your system settings when prompted.\n'
           );
-        } catch (_error) {
-          console.warn('  ⚠️  Could not send test notification.');
-          console.warn('  ℹ️   Make sure notifications are enabled for your terminal.\n');
+
+          try {
+            await sendNotification({
+              title: 'Asher CLI - Test Notification',
+              message: 'This is a test notification.',
+              sound: true,
+              wait: false,
+              timeout: 15,
+            });
+            console.log('  ✅  Test notification sent successfully!');
+            console.log(
+              "  ℹ️   If you didn't see it, please check your system notification settings.\n"
+            );
+          } catch (_error) {
+            console.warn('  ⚠️  Could not send test notification.');
+            console.warn('  ℹ️   Make sure notifications are enabled for your terminal.\n');
+          }
+        } else {
+          console.log('  ℹ️  Notifications disabled.');
+          console.log('  ℹ️  You can enable them later in your system settings.\n');
         }
-      } else {
-        console.log('  ℹ️  Notifications disabled.');
-        console.log('  ℹ️  You can enable them later in your system settings.\n');
       }
 
       // Transaction Scraping Section

@@ -5,6 +5,7 @@ import { join, dirname } from 'path';
 import { homedir } from 'os';
 import { validateSelectQuery } from '../utils/sqlValidation.js';
 import { encryptionKeyService } from './EncryptionKeyService.js';
+import { DatabaseService as DatabaseServiceInterface } from '../interfaces/DatabaseService.js';
 
 // Cross-platform app data directory
 function getAppDataPath() {
@@ -20,9 +21,9 @@ function getAppDataPath() {
   }
 }
 
-export class DatabaseService {
+export class SQLiteDatabaseService implements DatabaseServiceInterface {
   private db: Database | null = null;
-  private static instance: DatabaseService | null = null;
+  private static instance: SQLiteDatabaseService | null = null;
   private initialized: boolean = false;
   private dbPath: string;
   private static getDefaultDbPath(): string {
@@ -38,7 +39,7 @@ export class DatabaseService {
   }
 
   private constructor(dbPath: string) {
-    this.dbPath = dbPath || DatabaseService.getDefaultDbPath();
+    this.dbPath = dbPath || SQLiteDatabaseService.getDefaultDbPath();
 
     // Ensure the directory exists for the custom path if provided
     if (dbPath) {
@@ -137,21 +138,21 @@ export class DatabaseService {
     }
   }
 
-  public static getInstance(dbPath?: string): DatabaseService {
+  public static getInstance(dbPath?: string): SQLiteDatabaseService {
     // If no path provided, use the default one
-    const pathToUse = dbPath || DatabaseService.getDefaultDbPath();
+    const pathToUse = dbPath || SQLiteDatabaseService.getDefaultDbPath();
 
     // If we have an instance but it's for a different path, reset it
-    if (DatabaseService.instance && DatabaseService.instance.dbPath !== pathToUse) {
-      DatabaseService.instance.close().catch(console.error);
-      DatabaseService.instance = null;
+    if (SQLiteDatabaseService.instance && SQLiteDatabaseService.instance.dbPath !== pathToUse) {
+      SQLiteDatabaseService.instance.close().catch(console.error);
+      SQLiteDatabaseService.instance = null;
     }
 
-    if (!DatabaseService.instance) {
-      DatabaseService.instance = new DatabaseService(pathToUse);
+    if (!SQLiteDatabaseService.instance) {
+      SQLiteDatabaseService.instance = new SQLiteDatabaseService(pathToUse);
     }
 
-    return DatabaseService.instance;
+    return SQLiteDatabaseService.instance;
   }
 
   private assertInitialized(): Database {
@@ -447,5 +448,5 @@ export class DatabaseService {
 }
 
 export function getDbInstance(path?: string) {
-  return DatabaseService.getInstance(path);
+  return SQLiteDatabaseService.getInstance(path);
 }

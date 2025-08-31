@@ -41,8 +41,8 @@ vi.mock('inquirer', () => ({
   },
 }));
 
-vi.mock('../../services/DatabaseService.js', () => ({
-  DatabaseService: {
+vi.mock('../../services/DatabaseFactory.js', () => ({
+  DatabaseFactory: {
     getInstance: vi.fn().mockReturnValue({
       databaseExists: mockDatabaseExists,
       initialize: mockInitialize,

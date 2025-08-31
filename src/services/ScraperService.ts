@@ -2,19 +2,11 @@ import israeliBankScrapers from 'israeli-bank-scrapers';
 import { sendNotification } from '../utils/notify.js';
 const { createScraper } = israeliBankScrapers;
 import type { ScraperOptions } from 'israeli-bank-scrapers';
-import { DatabaseService as dbService } from './DatabaseService.js';
+import { DatabaseFactory } from './DatabaseFactory.js';
+import { DatabaseService } from '../interfaces/DatabaseService.js';
 
-// Type for the database instance
-type Database = {
-  prepare: (sql: string) => {
-    all: (params?: any) => any[];
-    run: (...params: any[]) => any;
-  };
-  transaction: (fn: (transactions: any[]) => void) => (transactions: any[]) => void;
-};
-
-// Get database instance with proper typing
-const db: Database = (dbService.getInstance() as any).db;
+// Get database instance
+const databaseService: DatabaseService = DatabaseFactory.getInstance();
 
 interface ScrapingResult {
   success: boolean;
@@ -42,27 +34,12 @@ interface ScraperTransaction {
   currency?: string;
 }
 
-interface ScraperTransactionType {
-  identifier?: string | number;
-  type: string;
-  status: string;
-  date: Date | string;
-  processedDate?: Date | string;
-  originalAmount: number;
-  originalCurrency: string;
-  chargedAmount: number;
-  description: string;
-  memo?: string;
-  category?: string;
-  currency?: string;
-}
-
 export class ScraperService {
   private static instance: ScraperService;
-  private db: Database;
+  private databaseService: DatabaseService;
 
   private constructor() {
-    this.db = db;
+    this.databaseService = databaseService;
   }
 
   public static getInstance(): ScraperService {
@@ -88,15 +65,20 @@ export class ScraperService {
   }> {
     try {
       // Get all configured scrapers from the database
-      const scraperConfigs = db
-        .prepare(
-          `
+      const scraperConfigs = await databaseService.query<{
+        id: number;
+        scraper_type: string;
+        credentials: string;
+        friendly_name: string;
+        tags: string | null;
+        last_scraped_timestamp: string | null;
+      }>(`
         SELECT id, scraper_type, credentials, friendly_name, tags, last_scraped_timestamp
         FROM scraper_credentials
         WHERE credentials IS NOT NULL
-      `
-        )
-        .all() as Array<{
+      `);
+
+      const scraperConfigsTyped = scraperConfigs as Array<{
         id: number;
         scraper_type: string;
         credentials: string;
@@ -107,12 +89,12 @@ export class ScraperService {
 
       const results = [];
 
-      if (!scraperConfigs.length) {
+      if (!scraperConfigsTyped.length) {
         console.log('No configured scrapers found');
         throw new Error('No configured scrapers found');
       }
 
-      for (const config of scraperConfigs) {
+      for (const config of scraperConfigsTyped) {
         try {
           // Calculate start date (1 year ago or last scraped date)
           const oneYearAgo = new Date();
@@ -161,13 +143,10 @@ export class ScraperService {
 
             const latestDate = this.getLatestTransactionDate(result.accounts);
             if (latestDate) {
-              db.prepare(
-                `
-                UPDATE scraper_credentials 
-                SET last_scraped_timestamp = ?
-                WHERE id = ?
-              `
-              ).run(latestDate.toISOString(), config.id);
+              await databaseService.execute(
+                'UPDATE scraper_credentials SET last_scraped_timestamp = $1 WHERE id = $2',
+                [latestDate.toISOString(), config.id]
+              );
             }
 
             await sendNotification({
@@ -282,70 +261,48 @@ export class ScraperService {
     accounts: Array<{ txns: ScraperTransaction[] }>,
     scraperCredentialId: number
   ): Promise<void> {
-    const insertTx = db.prepare(`
-      INSERT OR IGNORE INTO transactions (
-        scraper_credential_id,
-        identifier,
-        type,
-        status,
-        date,
-        processedDate,
-        originalAmount,
-        originalCurrency,
-        chargedAmount,
-        chargedCurrency,
-        description,
-        memo,
-        category
-      ) VALUES (
-        @scraper_credential_id,
-        @identifier,
-        @type,
-        @status,
-        @date,
-        @processedDate,
-        @originalAmount,
-        @originalCurrency,
-        @chargedAmount,
-        @chargedCurrency,
-        @description,
-        @memo,
-        @category
-      )
-    `);
-
-    const insertMany = db.transaction((transactions: ScraperTransactionType[]) => {
-      for (const tx of transactions as ScraperTransactionType[]) {
-        try {
-          const processedDate = tx.processedDate || tx.date;
-          const date = tx.date instanceof Date ? tx.date.toISOString() : tx.date;
-          const processedDateStr =
-            processedDate instanceof Date ? processedDate.toISOString() : processedDate;
-
-          insertTx.run({
-            scraper_credential_id: scraperCredentialId,
-            identifier: tx.identifier || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            type: tx.type || 'normal',
-            status: tx.status || 'completed',
-            date,
-            processedDate: processedDateStr,
-            originalAmount: tx.originalAmount || tx.chargedAmount || 0,
-            originalCurrency: tx.originalCurrency || 'ILS',
-            chargedAmount: tx.chargedAmount || 0,
-            chargedCurrency: tx.currency || 'ILS',
-            description: tx.description || '',
-            memo: tx.memo || null,
-            category: tx.category || null,
-          });
-        } catch (error) {
-          console.error('Error saving transaction:', error);
-        }
-      }
-    });
-
     // Process all transactions from all accounts
     const allTransactions = accounts.flatMap(account => account.txns || []);
-    insertMany(allTransactions);
+
+    for (const tx of allTransactions) {
+      try {
+        const processedDate = tx.processedDate || tx.date;
+        const date = tx.date instanceof Date ? tx.date.toISOString() : tx.date;
+        const processedDateStr =
+          processedDate instanceof Date ? processedDate.toISOString() : processedDate;
+
+        const transaction = {
+          scraper_credential_id: scraperCredentialId,
+          identifier:
+            tx.identifier?.toString() || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          type: tx.type || 'normal',
+          status: tx.status || 'completed',
+          date,
+          processedDate: processedDateStr,
+          originalAmount: tx.originalAmount || tx.chargedAmount || 0,
+          originalCurrency: tx.originalCurrency || 'ILS',
+          chargedAmount: tx.chargedAmount || 0,
+          chargedCurrency: tx.currency || 'ILS',
+          description: tx.description || '',
+          memo: tx.memo || null,
+          category: tx.category || null,
+        };
+
+        // Use upsert-like behavior by checking if transaction exists first
+        try {
+          await databaseService.saveTransaction(transaction);
+        } catch (error) {
+          // If it fails due to duplicate, that's expected (similar to INSERT OR IGNORE)
+          if (error instanceof Error && error.message.includes('duplicate')) {
+            console.log(`Transaction ${transaction.identifier} already exists, skipping`);
+          } else {
+            throw error;
+          }
+        }
+      } catch (error) {
+        console.error('Error saving transaction:', error);
+      }
+    }
   }
 
   /**
