@@ -1,0 +1,10 @@
+{
+  "functions": {
+    "app/[transport]/route.ts": {
+      "maxDuration": 800
+    }
+  },
+  "env": {
+    "POSTGRES_URL": "@postgres_url"
+  }
+}

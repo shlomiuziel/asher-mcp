@@ -35,9 +35,13 @@
     "configure:claude": "node --no-warnings=ExperimentalWarning --import tsx ./src/cli/index.ts configure:claude"
   },
   "lint-staged": {
-    "*.{js,ts,tsx}": [
+    "src/**/*.{js,ts,tsx}": [
       "eslint --fix",
       "prettier --write"
+    ],
+    "nextjs-mcp/**/*.{js,ts,tsx}": [
+      "cd nextjs-mcp && eslint --fix",
+      "cd nextjs-mcp && prettier --write"
     ],
     "*.{json,md,yml,yaml}": [
       "prettier --write"
