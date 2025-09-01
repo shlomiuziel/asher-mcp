@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Server as MCPServer } from '../../mcp/Server.js';
-import { DatabaseService } from '../../services/DatabaseService.js';
+import { DatabaseFactory } from '../../services/DatabaseFactory.js';
 import { encryptionKeyService } from '../../services/EncryptionKeyService.js';
 
 // Mock the McpServer and StdioServerTransport
@@ -21,9 +21,9 @@ vi.mock('@modelcontextprotocol/sdk/server/stdio.js', () => ({
   })),
 }));
 
-// Mock the DatabaseService and EncryptionKeyService
-vi.mock('../../services/DatabaseService.js', () => ({
-  DatabaseService: {
+// Mock the DatabaseFactory and EncryptionKeyService
+vi.mock('../../services/DatabaseFactory.js', () => ({
+  DatabaseFactory: {
     getInstance: vi.fn(),
   },
 }));
@@ -54,7 +54,7 @@ describe('MCPServer', () => {
     };
 
     // Mock the DatabaseService instance
-    (DatabaseService.getInstance as any).mockReturnValue(mockDb);
+    (DatabaseFactory.getInstance as any).mockReturnValue(mockDb);
 
     // Mock encryption key service
     (encryptionKeyService.ensureKeyIsAvailable as any).mockResolvedValue(undefined);

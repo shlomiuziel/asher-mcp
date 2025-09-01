@@ -4,7 +4,9 @@ import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import israeliBankScrapers from 'israeli-bank-scrapers';
 import { z } from 'zod';
 const { CompanyTypes } = israeliBankScrapers;
-import { DatabaseService } from '../services/DatabaseService.js';
+import { DatabaseFactory } from '../services/DatabaseFactory.js';
+import { DatabaseService } from '../interfaces/DatabaseService.js';
+import { PostgreSQLDatabaseService } from '../services/PostgreSQLDatabaseService.js';
 import { encryptionKeyService } from '../services/EncryptionKeyService.js';
 import '../utils/consoleRedirect.js';
 import { configureLogger } from '../utils/logger.js';
@@ -36,7 +38,7 @@ class Server {
       version: '1.0.0',
     });
 
-    this.databaseService = DatabaseService.getInstance();
+    this.databaseService = DatabaseFactory.getInstance();
     this.setupTools();
     this.setupErrorHandling();
   }
@@ -85,7 +87,10 @@ class Server {
    * @returns The result of the database operation
    */
   private async withDb<T>(fn: (db: DatabaseService) => Promise<T> | T): Promise<T> {
-    await encryptionKeyService.ensureKeyIsAvailable();
+    // Only ensure encryption key for SQLite
+    if (!(this.databaseService instanceof PostgreSQLDatabaseService)) {
+      await encryptionKeyService.ensureKeyIsAvailable();
+    }
     await this.databaseService.initialize();
     return fn(this.databaseService);
   }

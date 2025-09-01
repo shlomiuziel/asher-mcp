@@ -1,6 +1,7 @@
 import { readFile, existsSync } from 'fs';
 import { z } from 'zod';
-import { DatabaseService } from '../services/DatabaseService.js';
+import { DatabaseFactory } from '../services/DatabaseFactory.js';
+import { PostgreSQLDatabaseService } from '../services/PostgreSQLDatabaseService.js';
 import { encryptionKeyService } from '../services/EncryptionKeyService.js';
 import inquirer from 'inquirer';
 import path from 'path';
@@ -88,26 +89,31 @@ export async function ingestCredentials(filePath: string, encryptionKey?: string
   logInfo(`Found ${credentialsData.credentials.length} credential(s) to process`);
 
   // Check if we need to set up the encryption key
-  const dbService = DatabaseService.getInstance();
+  const dbService = DatabaseFactory.getInstance();
   const dbExists = await dbService.databaseExists();
+  const isPostgreSQL = dbService instanceof PostgreSQLDatabaseService;
 
   // Handle database initialization and encryption key setup
   try {
     if (!dbExists) {
-      logInfo('New database detected. Setting up encryption...');
-
-      // Use provided key or prompt for one
-      let key: string;
-      if (encryptionKey) {
-        logInfo('Using provided encryption key');
-        key = encryptionKey;
+      if (isPostgreSQL) {
+        logInfo('New PostgreSQL database detected. Initializing...');
       } else {
-        logInfo('No encryption key provided, please enter one:');
-        key = await promptForEncryptionKey();
-      }
+        logInfo('New database detected. Setting up encryption...');
 
-      // Set the key in the encryption service
-      encryptionKeyService.setKey(key);
+        // Use provided key or prompt for one
+        let key: string;
+        if (encryptionKey) {
+          logInfo('Using provided encryption key');
+          key = encryptionKey;
+        } else {
+          logInfo('No encryption key provided, please enter one:');
+          key = await promptForEncryptionKey();
+        }
+
+        // Set the key in the encryption service
+        encryptionKeyService.setKey(key);
+      }
 
       logInfo('Initializing database...');
       await dbService.initialize();
@@ -120,21 +126,26 @@ export async function ingestCredentials(filePath: string, encryptionKey?: string
       );
       logSuccess('Credentials have been successfully ingested and are ready to use!');
     } else {
-      // For existing database, ensure key is available
-      logInfo('Existing database detected. Please enter the encryption key:');
-      const key = await promptForEncryptionKey(false);
-      encryptionKeyService.setKey(key);
+      if (isPostgreSQL) {
+        logInfo('Existing PostgreSQL database detected. Connecting...');
+        await dbService.initialize();
+      } else {
+        // For existing database, ensure key is available
+        logInfo('Existing database detected. Please enter the encryption key:');
+        const key = await promptForEncryptionKey(false);
+        encryptionKeyService.setKey(key);
 
-      // Initialize the database with the provided key
-      console.log(
-        createSection({
-          title: 'Initializing Database',
-          emoji: '🔑',
-          color: 'blue',
-        })
-      );
-      logInfo('Initializing database...');
-      await dbService.initialize();
+        // Initialize the database with the provided key
+        console.log(
+          createSection({
+            title: 'Initializing Database',
+            emoji: '🔑',
+            color: 'blue',
+          })
+        );
+        logInfo('Initializing database...');
+        await dbService.initialize();
+      }
       console.log(
         createSection({
           title: 'Database Initialized',

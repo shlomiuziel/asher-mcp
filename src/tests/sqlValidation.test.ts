@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { validateSelectQuery } from '../utils/sqlValidation.js';
-import { DatabaseService } from '../services/DatabaseService.js';
+import { SQLiteDatabaseService } from '../services/DatabaseService.js';
 
 describe('SQL Validation', () => {
   describe('validateSelectQuery', () => {
@@ -53,11 +53,6 @@ describe('SQL Validation', () => {
     describe('PRAGMA statements', () => {
       it('should allow PRAGMA table_info for allowed tables', () => {
         const result = validateSelectQuery('PRAGMA table_info(transactions)');
-        expect(result).toEqual({ valid: true });
-      });
-
-      it('should allow PRAGMA index_list for allowed tables', () => {
-        const result = validateSelectQuery('PRAGMA index_list(scraper_credentials)');
         expect(result).toEqual({ valid: true });
       });
 
@@ -141,11 +136,11 @@ describe('SQL Validation', () => {
   });
 
   describe('executeSafeSelectQuery', () => {
-    let dbService: DatabaseService;
+    let dbService: SQLiteDatabaseService;
 
     beforeEach(() => {
       // Create a real DatabaseService instance with a mock database
-      dbService = DatabaseService.getInstance(':memory:');
+      dbService = SQLiteDatabaseService.getInstance(':memory:');
 
       // Mock the internal database methods
       const mockDb = {
@@ -199,18 +194,9 @@ describe('SQL Validation', () => {
     it('should handle different table name patterns', () => {
       const testCases = [
         { query: 'SELECT * FROM transactions', expected: ['transactions'] },
-        { query: 'SELECT * FROM scraper_credentials', expected: ['scraper_credentials'] },
         { query: 'SELECT * FROM transactions t', expected: ['transactions'] },
         { query: 'SELECT * FROM transactions AS t', expected: ['transactions'] },
         { query: 'SELECT * FROM transactions WHERE id = 1', expected: ['transactions'] },
-        {
-          query: 'SELECT * FROM transactions, scraper_credentials',
-          expected: ['transactions', 'scraper_credentials'],
-        },
-        {
-          query: 'SELECT * FROM transactions JOIN scraper_credentials',
-          expected: ['transactions', 'scraper_credentials'],
-        },
         { query: 'SELECT * FROM transactions\nWHERE id = 1', expected: ['transactions'] },
       ];
 

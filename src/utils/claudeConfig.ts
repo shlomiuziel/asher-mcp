@@ -8,6 +8,7 @@ type ClaudeConfig = {
     [key: string]: {
       command: string;
       args: string[];
+      env?: Record<string, string>;
     };
   };
 };
@@ -83,10 +84,19 @@ export async function configureClaudeIntegration(
 
     console.log('Global tsx path:', tsxPath);
 
-    config.mcpServers[serverName] = {
+    const serverConfig: any = {
       command: tsxPath,
       args: [mcpServerPath],
     };
+
+    // Add DATABASE_URL if it exists
+    if (process.env.DATABASE_URL) {
+      serverConfig.env = {
+        DATABASE_URL: process.env.DATABASE_URL,
+      };
+    }
+
+    config.mcpServers[serverName] = serverConfig;
 
     await writeFile(configPath, JSON.stringify(config, null, 2));
     return {
