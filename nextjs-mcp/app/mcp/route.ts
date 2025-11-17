@@ -2,7 +2,6 @@ import { createMcpHandler } from 'mcp-handler';
 import { z } from 'zod';
 import { ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { getDatabaseService } from '../../src/lib/database';
-import { getScraperService } from '../../src/lib/scraper-service';
 
 interface TextContent {
   type: 'text';
@@ -116,80 +115,24 @@ const tools: Record<string, { handler: ToolHandler; schema?: ToolSchema }> = {
     },
   },
 
-  listScrapers: {
+  getCurrentDate: {
     handler: async () => {
-      const scraperService = getScraperService();
-      const scrapers = scraperService.getAvailableScrapers();
-      return { success: true, data: { scrapers } };
-    },
-    schema: {
-      description: 'List all available bank scrapers',
-      inputSchema: {},
-    },
-  },
-
-  fetchTransactions: {
-    handler: async () => {
-      try {
-        const scraperService = getScraperService();
-        const result = await scraperService.fetchAllTransactions();
-
-        return {
-          success: result.success,
-          data: {
-            results: result.results.map(r => ({
-              scraper: r.scraper,
-              friendlyName: r.friendlyName,
-              success: r.success,
-              error: r.error,
-              errorType: r.errorType,
-              transactionCount:
-                (r.accounts as { txns?: unknown[] }[] | undefined)?.reduce((sum, acc) => sum + (acc.txns?.length || 0), 0) || 0,
-            })),
-            totalTransactions: result.results.reduce(
-              (sum, r) =>
-                sum + ((r.accounts as { txns?: unknown[] }[] | undefined)?.reduce((s, acc) => s + (acc.txns?.length || 0), 0) || 0),
-              0
-            ),
-          },
-        };
-      } catch (error: unknown) {
-        console.error('Error in fetchTransactions:', error);
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-        const errorType = error instanceof Error ? error.name : 'ScraperError';
-        return {
-          success: false,
-          error: errorMessage,
-          errorType,
-        };
-      }
-    },
-    schema: {
-      description: 'Fetch transactions from all configured bank scrapers',
-      inputSchema: {},
-    },
-  },
-};
-
-const prompts = {
-  'fetch-last-month-transactions': () => ({
-    messages: [
-      {
-        role: 'user' as const,
-        content: {
-          type: 'text' as const,
-          text: `Fetch transactions from the last month and calculate the total expenses. Make sure to:
-                    1. Query the database for transactions within the last month's date range
-                    2. Filter for expenses (negative amounts)
-                    3. Sum up the total expenses
-                    4. Return a summary including:
-                      - Total expenses amount
-                      - Number of transactions
-                      - List of transactions with dates and amounts`,
+      const now = new Date();
+      return {
+        success: true,
+        data: {
+          date: now.toISOString().split('T')[0], // YYYY-MM-DD
+          datetime: now.toISOString(),
+          timestamp: now.getTime(),
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         },
-      },
-    ],
-  }),
+      };
+    },
+    schema: {
+      description: 'Get the current date and time. Use this to understand what "today", "this month", "this year" means in user queries.',
+      inputSchema: {},
+    },
+  },
 };
 
 const mcpHandler = createMcpHandler(
@@ -210,10 +153,6 @@ const mcpHandler = createMcpHandler(
           }
         }
       );
-    });
-
-    Object.entries(prompts).forEach(([name, promptHandler]) => {
-      server.prompt(name, promptHandler);
     });
   }
 );

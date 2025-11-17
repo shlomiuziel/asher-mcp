@@ -9,8 +9,18 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ag-ui/mastra": "^0.2.0",
+    "@ai-sdk/openai": "^2.0.65",
+    "@copilotkit/react-core": "^1.10.6",
+    "@copilotkit/react-ui": "^1.10.6",
+    "@copilotkit/runtime": "^1.10.6",
+    "@mastra/core": "^0.24.1",
+    "@mastra/mcp": "^0.14.2",
     "@modelcontextprotocol/sdk": "^1.17.4",
+    "@openrouter/ai-sdk-provider": "^1.2.2",
+    "@sparticuz/chromium": "^122.0.0",
     "@vercel/postgres": "^0.10.0",
+    "ai": "^5.0.93",
     "israeli-bank-scrapers": "^6.2.2",
     "mcp-handler": "^1.0.2",
     "next": "15.5.2",
@@ -30,5 +40,8 @@
     "eslint-config-next": "15.5.2",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }

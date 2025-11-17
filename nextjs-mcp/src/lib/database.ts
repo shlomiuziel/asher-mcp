@@ -42,7 +42,7 @@ export interface DatabaseService {
 class VercelPostgresDatabaseService implements DatabaseService {
   async databaseExists(): Promise<boolean> {
     try {
-      await sql`SELECT 1`;
+      await sql.query('SELECT 1');
       return true;
     } catch {
       return false;
@@ -60,7 +60,7 @@ class VercelPostgresDatabaseService implements DatabaseService {
 
   async deleteScraperCredentials(scraperId: string): Promise<boolean> {
     try {
-      const result = await sql`DELETE FROM scraper_credentials WHERE scraper_id = ${scraperId}`;
+      const result = await sql.query('DELETE FROM scraper_credentials WHERE scraper_id = $1', [scraperId]);
       return (result.rowCount || 0) > 0;
     } catch (error) {
       console.error('Error deleting scraper credentials:', error);
@@ -74,57 +74,57 @@ class VercelPostgresDatabaseService implements DatabaseService {
       'id' | 'createdAt' | 'updatedAt' | 'last_scraped_timestamp'
     >
   ): Promise<number> {
-    const result = await sql`
+    const result = await sql.query(`
       INSERT INTO scraper_credentials (scraper_id, friendly_name, encrypted_credentials)
-      VALUES (${credentials.scraperId}, ${credentials.friendlyName}, ${credentials.encryptedCredentials})
+      VALUES ($1, $2, $3)
       ON CONFLICT (scraper_id) 
       DO UPDATE SET 
-        friendly_name = ${credentials.friendlyName},
-        encrypted_credentials = ${credentials.encryptedCredentials},
+        friendly_name = $2,
+        encrypted_credentials = $3,
         updated_at = NOW()
       RETURNING id
-    `;
+    `, [credentials.scraperId, credentials.friendlyName, credentials.encryptedCredentials]);
     return result.rows[0].id;
   }
 
   async getScraperCredentials(): Promise<ScraperCredentialRow[]> {
-    const result = await sql`SELECT * FROM scraper_credentials ORDER BY friendly_name`;
+    const result = await sql.query('SELECT * FROM scraper_credentials ORDER BY friendly_name');
     return result.rows as ScraperCredentialRow[];
   }
 
   async updateLastScrapedTimestamp(friendlyName: string, timestamp: string): Promise<void> {
-    await sql`
+    await sql.query(`
       UPDATE scraper_credentials 
-      SET last_scraped_timestamp = ${timestamp}, updated_at = NOW()
-      WHERE friendly_name = ${friendlyName}
-    `;
+      SET last_scraped_timestamp = $1, updated_at = NOW()
+      WHERE friendly_name = $2
+    `, [timestamp, friendlyName]);
   }
 
   async getScraperCredentialByFriendlyName(friendlyName: string): Promise<ScraperCredentialRow | null> {
-    const result = await sql`
-      SELECT * FROM scraper_credentials WHERE friendly_name = ${friendlyName}
-    `;
+    const result = await sql.query('SELECT * FROM scraper_credentials WHERE friendly_name = $1', [friendlyName]);
     return result.rows[0] as ScraperCredentialRow || null;
   }
 
   async saveTransaction(
     transaction: Omit<TransactionRow, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<number> {
-    const result = await sql`
+    const result = await sql.query(`
       INSERT INTO transactions (
-        scraper_credential_id, unique_transaction_id, date, processed_date, 
-        original_amount, original_currency, charge_amount, description, memo, 
+        scraper_credential_id, unique_transaction_id, date, processed_date,
+        original_amount, original_currency, charged_amount, description, memo,
         category, original_category, account_name, identifier
       ) VALUES (
-        ${transaction.scraperCredentialId}, ${transaction.uniqueTransactionId},
-        ${transaction.date}, ${transaction.processedDate}, ${transaction.originalAmount},
-        ${transaction.originalCurrency}, ${transaction.chargeAmount}, ${transaction.description},
-        ${transaction.memo}, ${transaction.category}, ${transaction.originalCategory},
-        ${transaction.accountName}, ${transaction.identifier}
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
       )
       ON CONFLICT (unique_transaction_id) DO NOTHING
       RETURNING id
-    `;
+    `, [
+      transaction.scraperCredentialId, transaction.uniqueTransactionId,
+      transaction.date, transaction.processed_date, transaction.original_amount,
+      transaction.original_currency, transaction.charged_amount, transaction.description,
+      transaction.memo, transaction.category, transaction.originalCategory,
+      transaction.accountName, transaction.identifier
+    ]);
     return result.rows[0]?.id || 0;
   }
 
@@ -172,11 +172,11 @@ class VercelPostgresDatabaseService implements DatabaseService {
 
   async listTables(): Promise<{ success: boolean; tables?: string[]; error?: string }> {
     try {
-      const result = await sql`
+      const result = await sql.query(`
         SELECT table_name 
         FROM information_schema.tables 
         WHERE table_schema = 'public'
-      `;
+      `, []);
       const tables = result.rows.map(row => row.table_name);
       return { success: true, tables };
     } catch (error: unknown) {
