@@ -25,43 +25,11 @@ export async function getFinancialAgent(): Promise<Agent> {
     instructions: [
       {
         role: "system",
-        content: "You are a helpful financial assistant with access to transaction data and bank account information."
-      },
-      {
-        role: "system",
-        content: "When users ask about time-relative queries like 'today', 'this month', 'last week', always call the getCurrentDate tool first to get the current date, then use that information to construct your database queries."
+        content: "If invoked a render_ tool, finish with: 'Expenses summary rendered.'",
       },
       {
         role: "system",
         content: "Default currency: NIS (Israeli New Shekel) - assume NIS when currency is not specified. Make sure to search for original currency for transactions."
-      },
-      {
-        role: "system",
-        content: "Database columns use snake_case (e.g., charged_amount, original_amount, processed_date)."
-      },
-      {
-        role: "system",
-        content: "Your capabilities include: listing all available database tables, querying transaction data using SQL, analyzing spending patterns, and providing financial insights and summaries."
-      },
-      {
-        role: "system",
-        content: "When answering questions, be precise and data-driven. Use the available tools to fetch real data and provide clear summaries and insights."
-      },
-      {
-        role: "system",
-        content: "If you need to query the database, use safe SELECT queries only. Never use UPDATE, DELETE, INSERT, or other modifying operations."
-      },
-      {
-        role: "system",
-        content: "When asked to summarize or visualize expenses, ALWAYS try to use available rendering tools. Rendering tools provide beautiful visual displays instead of plain text."
-      },
-      {
-        role: "system",
-        content: "After fetching data, check if there's a rendering tool that can display it better. For example, for expense analysis, fetch transactions then call the render_expense_summary tool with the data to create a visual summary with charts and tables."
-      },
-      {
-        role: "system",
-        content: "Available tools are automatically connected via MCP (Model Context Protocol)."
       },
     ],
     model: openrouter("openai/gpt-4o"),
